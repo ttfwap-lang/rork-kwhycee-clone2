@@ -3,7 +3,7 @@ import Testing
 @testable import FaceSwapLiveApp
 
 /// Stage 1 gates: bake is byte-stable, and the live injection script still
-/// contains the pipeline the page depends on. Does not require a relocated body.
+/// contains the pipeline the page depends on.
 struct PatchAssemblerTests {
     @Test func bakeReplacesPlaceholdersOnly() {
         let sample = "np=__FSL_NP__ hard=__FSL_HARD__ mask=__FSL_MASK__ mode=__FSL_CAPMODE__ key=__FSL_KEY__ tok=__FSL_TOKEN__ keep=captureStream"
@@ -15,6 +15,31 @@ struct PatchAssemblerTests {
         )
         #expect(baked == "np=false hard=false mask=false mode=auto key=KEYKEYKEYKEYKEYK tok=TOKENTOKENTOKENTOKENTOKE keep=captureStream")
         #expect(!baked.contains("__FSL_"))
+    }
+
+    @Test func bakeDefaultStealthMatchesHistoricalBooleans() {
+        let baked = PatchAssembler.bake(
+            "__FSL_NP__|__FSL_HARD__|__FSL_MASK__|__FSL_CAPMODE__",
+            stealth: .default,
+            key: "k",
+            token: "t"
+        )
+        #expect(baked == "false|false|false|auto")
+    }
+
+    @Test func bakeHonorsNonDefaultStealth() {
+        var stealth = StyleSheetProvider.StealthOptions.default
+        stealth.nativePickerMode = true
+        stealth.accessorHardening = true
+        stealth.maskWrappersAsNative = true
+        stealth.captureButtonPolicy = "picker"
+        let baked = PatchAssembler.bake(
+            "__FSL_NP__|__FSL_HARD__|__FSL_MASK__|__FSL_CAPMODE__",
+            stealth: stealth,
+            key: "k",
+            token: "t"
+        )
+        #expect(baked == "true|true|true|picker")
     }
 
     @Test func livePatchScriptStillHasInjectionPipeline() {
@@ -38,16 +63,5 @@ struct PatchAssemblerTests {
         let log = StyleSheetProvider.constraintLoggingScript
         #expect(patch != log)
         #expect(log.contains("_constraintLog"))
-    }
-
-    @Test func bakeDefaultStealthMatchesHistoricalBooleans() {
-        // HEAD defaults: nativePicker off, hardening off, mask off, policy auto.
-        let baked = PatchAssembler.bake(
-            "__FSL_NP__|__FSL_HARD__|__FSL_MASK__|__FSL_CAPMODE__",
-            stealth: .default,
-            key: "k",
-            token: "t"
-        )
-        #expect(baked == "false|false|false|auto")
     }
 }
