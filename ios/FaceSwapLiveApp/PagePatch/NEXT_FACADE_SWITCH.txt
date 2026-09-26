@@ -1,0 +1,28 @@
+Stage 1 next commit — façade switch only. Do not edit patchScriptBody.
+
+In StyleSheetProvider.patchScript(stealth:) replace the six replacingOccurrences
+with the assembler already on this branch. patchScriptBody stays private.
+
+BEFORE (HEAD):
+        let nativePicker = stealth.nativePickerMode ? "true" : "false"
+        let hardening = stealth.accessorHardening ? "true" : "false"
+        let mask = stealth.maskWrappersAsNative ? "true" : "false"
+        let policy = stealth.captureButtonPolicy
+        return patchScriptBody
+            .replacingOccurrences(of: "__FSL_NP__", with: nativePicker)
+            .replacingOccurrences(of: "__FSL_HARD__", with: hardening)
+            .replacingOccurrences(of: "__FSL_MASK__", with: mask)
+            .replacingOccurrences(of: "__FSL_CAPMODE__", with: policy)
+            .replacingOccurrences(of: "__FSL_KEY__", with: fslStateKeySuffix)
+            .replacingOccurrences(of: "__FSL_TOKEN__", with: fslStateToken)
+
+AFTER:
+        return PatchAssembler.bake(
+            patchScriptBody,
+            stealth: stealth,
+            key: fslStateKeySuffix,
+            token: fslStateToken
+        )
+
+Verify: PatchAssemblerTests.livePatchScriptStillHasInjectionPipeline still green.
+Inject path: BrowserWebContainer still uses StyleSheetProvider.patchScript.
